@@ -1,0 +1,77 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<datasource formatted-name='MySQL_Sales_Source' inline='true' source-platform='win' version='18.1'>
+  <connection class='federated'>
+    <named-connections>
+      <named-connection caption='MYSQL_SERVER' name='mysql.1'>
+        <connection class='mysql' dbname='SalesAnalyticsDB' port='3306' server='MYSQL_SERVER' username='MYSQL_USERNAME' password='MYSQL_PASSWORD' />
+      </named-connection>
+    </named-connections>
+        <relation connection='mysql.1' name='Customers' table='[Customers]' type='table' />
+        <relation connection='mysql.1' name='Products' table='[Products]' type='table' />
+        <relation connection='mysql.1' name='Regions' table='[Regions]' type='table' />
+        <relation connection='mysql.1' name='Sales' table='[Sales]' type='table' />
+        <relation connection='mysql.1' name='SalesTarget' table='[SalesTarget]' type='table' />
+    <cols>
+      <map key='[CustomerID]' value='[Customers].[CustomerID]' />
+      <map key='[CustomerName]' value='[Customers].[CustomerName]' />
+      <map key='[CustomerType]' value='[Customers].[CustomerType]' />
+      <map key='[Email]' value='[Customers].[Email]' />
+      <map key='[RegionID]' value='[Customers].[RegionID]' />
+      <map key='[ProductID]' value='[Products].[ProductID]' />
+      <map key='[ProductName]' value='[Products].[ProductName]' />
+      <map key='[Category]' value='[Products].[Category]' />
+      <map key='[SubCategory]' value='[Products].[SubCategory]' />
+      <map key='[UnitPrice]' value='[Products].[UnitPrice]' />
+      <map key='[UnitCost]' value='[Products].[UnitCost]' />
+      <map key='[RegionID]' value='[Regions].[RegionID]' />
+      <map key='[RegionName]' value='[Regions].[RegionName]' />
+      <map key='[Country]' value='[Regions].[Country]' />
+      <map key='[RegionManager]' value='[Regions].[RegionManager]' />
+      <map key='[SaleID]' value='[Sales].[SaleID]' />
+      <map key='[OrderDate]' value='[Sales].[OrderDate]' />
+      <map key='[CustomerID]' value='[Sales].[CustomerID]' />
+      <map key='[ProductID]' value='[Sales].[ProductID]' />
+      <map key='[RegionID]' value='[Sales].[RegionID]' />
+      <map key='[Quantity]' value='[Sales].[Quantity]' />
+      <map key='[SalesAmount]' value='[Sales].[SalesAmount]' />
+      <map key='[CostAmount]' value='[Sales].[CostAmount]' />
+      <map key='[DiscountAmount]' value='[Sales].[DiscountAmount]' />
+      <map key='[SalesChannel]' value='[Sales].[SalesChannel]' />
+      <map key='[TargetID]' value='[SalesTarget].[TargetID]' />
+      <map key='[RegionID]' value='[SalesTarget].[RegionID]' />
+      <map key='[TargetYear]' value='[SalesTarget].[TargetYear]' />
+      <map key='[TargetMonth]' value='[SalesTarget].[TargetMonth]' />
+      <map key='[TargetAmount]' value='[SalesTarget].[TargetAmount]' />
+    </cols>
+  </connection>
+      <column datatype='integer' name='[CustomerID]' role='dimension' type='nominal' />
+      <column datatype='string' name='[CustomerName]' role='dimension' type='nominal' />
+      <column datatype='string' name='[CustomerType]' role='dimension' type='nominal' />
+      <column datatype='string' name='[Email]' role='dimension' type='nominal' />
+      <column datatype='integer' name='[RegionID]' role='dimension' type='nominal' />
+      <column datatype='integer' name='[ProductID]' role='dimension' type='nominal' />
+      <column datatype='string' name='[ProductName]' role='dimension' type='nominal' />
+      <column datatype='string' name='[Category]' role='dimension' type='nominal' />
+      <column datatype='string' name='[SubCategory]' role='dimension' type='nominal' />
+      <column datatype='real' name='[UnitPrice]' role='measure' type='quantitative' />
+      <column datatype='real' name='[UnitCost]' role='measure' type='quantitative' />
+      <column datatype='integer' name='[RegionID]' role='dimension' type='nominal' />
+      <column datatype='string' name='[RegionName]' role='dimension' type='nominal' />
+      <column datatype='string' name='[Country]' role='dimension' type='nominal' />
+      <column datatype='string' name='[RegionManager]' role='dimension' type='nominal' />
+      <column datatype='integer' name='[SaleID]' role='dimension' type='nominal' />
+      <column datatype='date' name='[OrderDate]' role='dimension' type='nominal' />
+      <column datatype='integer' name='[CustomerID]' role='dimension' type='nominal' />
+      <column datatype='integer' name='[ProductID]' role='dimension' type='nominal' />
+      <column datatype='integer' name='[RegionID]' role='dimension' type='nominal' />
+      <column datatype='integer' name='[Quantity]' role='measure' type='quantitative' />
+      <column datatype='real' name='[SalesAmount]' role='measure' type='quantitative' />
+      <column datatype='real' name='[CostAmount]' role='measure' type='quantitative' />
+      <column datatype='real' name='[DiscountAmount]' role='measure' type='quantitative' />
+      <column datatype='string' name='[SalesChannel]' role='dimension' type='nominal' />
+      <column datatype='integer' name='[TargetID]' role='dimension' type='nominal' />
+      <column datatype='integer' name='[RegionID]' role='dimension' type='nominal' />
+      <column datatype='integer' name='[TargetYear]' role='dimension' type='nominal' />
+      <column datatype='string' name='[TargetMonth]' role='dimension' type='nominal' />
+      <column datatype='real' name='[TargetAmount]' role='measure' type='quantitative' />
+</datasource>

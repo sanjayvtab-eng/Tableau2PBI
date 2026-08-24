@@ -1,0 +1,33 @@
+# Virtual environments
+.venv/
+backend/.venv/
+env/
+venv/
+ENV/
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+.npm/
+
+# Python cache & build
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Workspaces & exports
+workspace/
+backend/workspace/
+backend/uploads/
+backend/exports/
+*.tmp
+*.tmp.zip
+
+# System
+.DS_Store
+Thumbs.db

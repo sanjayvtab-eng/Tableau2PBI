@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<workbook source-build='2026.1' version='18.1' name='Demo Superstore Tableau'>
+  <datasources>
+    <datasource caption='Sales' name='federated.123'>
+      <connection class='textscan' filename='sales.csv' />
+      <relation name='Sales' table='[sales.csv]' type='table' />
+      <column caption='Order ID' name='[Order ID]' datatype='string' role='dimension' />
+      <column caption='Order Date' name='[Order Date]' datatype='date' role='dimension' />
+      <column caption='Ship Date' name='[Ship Date]' datatype='date' role='dimension' />
+      <column caption='Customer ID' name='[Customer ID]' datatype='string' role='dimension' />
+      <column caption='Region' name='[Region]' datatype='string' role='dimension' />
+      <column caption='Sales' name='[Sales]' datatype='real' role='measure' aggregation='Sum' />
+      <column caption='Profit' name='[Profit]' datatype='real' role='measure' aggregation='Sum' />
+      <column caption='Quantity' name='[Quantity]' datatype='integer' role='measure' aggregation='Sum' />
+      <column caption='Profit Ratio' name='[Calculation_ProfitRatio]' datatype='real' role='measure'><calculation class='tableau' formula='SUM([Profit]) / SUM([Sales])' /></column>
+      <column caption='Sales Band' name='[Calculation_SalesBand]' datatype='string' role='dimension'><calculation class='tableau' formula='IF [Sales] &gt; 1000 THEN &quot;High&quot; ELSE &quot;Standard&quot; END' /></column>
+      <column caption='Region Sales Fixed' name='[Calculation_RegionSalesFixed]' datatype='real' role='measure'><calculation class='tableau' formula='{ FIXED [Region] : SUM([Sales]) }' /></column>
+    </datasource>
+  </datasources>
+  <worksheets>
+    <worksheet name='Sales by Region'>
+      <table><rows>[Region]</rows><cols>[Sales]</cols></table>
+      <mark class='Bar' />
+      <filter column='[Order Date]' />
+    </worksheet>
+    <worksheet name='Profit Trend'>
+      <table><rows>[Profit]</rows><cols>[Order Date]</cols></table>
+      <mark class='Line' />
+    </worksheet>
+  </worksheets>
+  <dashboards>
+    <dashboard name='Executive Sales Dashboard'>
+      <zones>
+        <zone name='Sales by Region' type='worksheet' />
+        <zone name='Profit Trend' type='worksheet' />
+      </zones>
+    </dashboard>
+  </dashboards>
+</workbook>
