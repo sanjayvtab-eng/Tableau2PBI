@@ -1,5 +1,5 @@
 services:
-  # 1. Backend Web Service (FastAPI)
+  # Backend Web Service (FastAPI)
   - type: web
     name: tableau2pbi-backend
     runtime: python
@@ -10,12 +10,17 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.8
-      - key: CORS_ORIGIN_REGEX
-        value: ".*"
+      # Free Render services use ephemeral storage. Production deployments should
+      # override this with persistent storage/object storage when project survival
+      # across restarts is required.
       - key: T2PBI_WORKSPACE
         value: "/tmp/t2pbi_runtime/workspace"
+      - key: T2PBI_AUTH_USERNAME
+        sync: false
+      - key: T2PBI_AUTH_PASSWORD
+        sync: false
 
-  # 2. Frontend Static Site (React + Vite)
+  # Frontend Static Site (React + Vite)
   - type: web
     name: tableau2pbi-frontend
     runtime: static
