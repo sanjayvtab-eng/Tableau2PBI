@@ -330,11 +330,10 @@ def _source_step(
             )
 
             return (
-                f'Workbook_Navigation = '
-                f'Excel.Workbook('
+                f'Workbook_Navigation = try Excel.Workbook('
                 f'File.Contents({path_ref}), '
                 f'null, '
-                f'false),\n'
+                f'false) otherwise #table({{"Name", "Data", "Item", "Kind", "Hidden"}}, {{}}),\n'
 
                 f'    Candidate_Objects = '
                 f'Table.SelectRows('
@@ -344,8 +343,8 @@ def _source_step(
                 f'    Matching_Objects = '
                 f'Table.SelectRows('
                 f'Candidate_Objects, '
-                f'each Text.Lower(Text.From([Item])) = '
-                f'Text.Lower({wanted})),\n'
+                f'each Text.Lower(Text.From([Item])) = Text.Lower({wanted}) or '
+                f'Text.Lower(Text.From([Name])) = Text.Lower({wanted})),\n'
 
                 f'    Source_Read = '
                 f'if Table.RowCount(Matching_Objects) > 0 '
@@ -1030,19 +1029,25 @@ in
 
     if cols:
 
-        type_step = (
-            "ChangedType_EnforcedPowerBITypes_FINAL = "
-            "Table.TransformColumnTypes("
-            "Safe_Convert_Values_To_Selected_Types, "
-            f"{{{pairs}}}, "
-            '"en-US"'
-            ")"
+        type_step = f"""    ExistingColumns = Table.ColumnNames(Safe_Convert_Values_To_Selected_Types),
+    TypePairs = {{{pairs}}},
+    ValidTypes = List.Select(
+        TypePairs,
+        each List.Contains(ExistingColumns, _{{0}})
+    ),
+    ChangedType_EnforcedPowerBITypes_FINAL =
+        if List.Count(ValidTypes) > 0
+        then Table.TransformColumnTypes(
+            Safe_Convert_Values_To_Selected_Types,
+            ValidTypes,
+            "en-US"
         )
+        else Safe_Convert_Values_To_Selected_Types"""
 
     else:
 
         type_step = (
-            "ChangedType_EnforcedPowerBITypes_FINAL = "
+            "    ChangedType_EnforcedPowerBITypes_FINAL = "
             "Safe_Convert_Values_To_Selected_Types"
         )
 
@@ -1051,7 +1056,7 @@ in
     Safe_Convert_Values_To_Selected_Types =
         try Promote_Source_Headers
         otherwise #table({{}}, {{}}),
-    {type_step}
+{type_step}
 in
     ChangedType_EnforcedPowerBITypes_FINAL
 """
