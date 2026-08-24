@@ -16,11 +16,14 @@ def validate_project(project: MigrationProject) -> list[ValidationIssue]:
     if not any(i.role in {"Workbook", "Data source", "Packaged workbook", "Packaged data source"} for i in project.inventory):
         _add(issues, "warning", "Inventory", project.project_name, "No Tableau workbook or data-source XML was found.", "Upload primary .twb or .tds metadata, or package file.")
     if any(i.extension.lower() in {".zip", ".twbx", ".tdsx", ".tflx"} for i in project.inventory) and len(project.inventory) <= 1:
-        _add(issues, "error", "Package Extraction", project.project_name, "Package content was not extracted; inventory contains only the uploaded package row.", "Restart V6 backend, confirm health shows version 6.x and workspace C:\\T2PBI_RUNTIME\\workspace, then upload again.", True)
+        _add(issues, "error", "Package Extraction", project.project_name, "Package content was not extracted; inventory contains only the uploaded package row.", "Restart the backend, confirm health and workspace configuration, then upload again.", True)
 
     for item in project.inventory:
         if item.errors:
             _add(issues, "warning", "Inventory", item.file_name, "; ".join(item.errors), "Review package file integrity or upload the file separately.")
+
+    database_connectors = {"SQL Server", "Oracle", "PostgreSQL", "MySQL", "Snowflake", "Databricks", "BigQuery", "Azure SQL"}
+    schema_item_connectors = {"SQL Server", "PostgreSQL", "MySQL", "Azure SQL"}
 
     for m in project.source_mappings:
         mapping_text = " ".join(str(x or "") for x in [m.original_connection_type, m.detected_source_path, m.target_file_path, m.datasource]).lower()
@@ -29,17 +32,33 @@ def validate_project(project: MigrationProject) -> list[ValidationIssue]:
             _add(issues, "warning", "TDE Strategy", m.datasource, "Legacy .tde mapping must not be used as refreshable production source.", "Recover original source systems and transformation logic; use TDE only as validation baseline or temporary static export.")
         elif m.target_connector == "Manual source placeholder":
             _add(issues, "warning", "Source Mapping", m.datasource, "Source requires manual Power BI connector mapping.", "Open Source Mapping and select a target connector/source path.")
-        if m.target_connector in {"SQL Server", "Oracle", "PostgreSQL", "MySQL", "Snowflake", "Databricks", "BigQuery", "Azure SQL"} and not (m.server_name or m.sql_query):
-            _add(issues, "warning", "Source Mapping", m.datasource, "Database source has no server or native SQL target configured.", "Enter target server/database/schema/table or confirm native SQL mapping.")
-        if m.sql_query and not m.sql_query.strip():
-            _add(issues, "warning", "Source Mapping", m.datasource, "SQL query mapping is empty.", "Provide SQL text or replace with table mapping.")
+
+        if m.target_connector in database_connectors:
+            if not (m.server_name or "").strip():
+                _add(issues, "error", "Database Source Identity", m.datasource, "Database source has no server configured.", "Enter the physical server/host before export.")
+            if not (m.database_name or "").strip():
+                _add(issues, "error", "Database Source Identity", m.datasource, "Database source has no database configured.", "Enter the physical database name before export.")
+            if m.target_connector in schema_item_connectors and not m.sql_query:
+                physical_table = str((m.parameter_values or {}).get("physical_table") or m.table_name or "").strip()
+                if not physical_table:
+                    _add(issues, "error", "Database Source Identity", m.datasource, "Database table mapping has no physical table name.", "Map the physical source table; do not use the Power BI query/display name as database identity.")
+                physical_schema = str((m.parameter_values or {}).get("physical_schema") or m.schema_name or "").strip()
+                if m.target_connector == "PostgreSQL" and not physical_schema:
+                    _add(issues, "warning", "Database Source Identity", m.datasource, "PostgreSQL relation has no explicit physical schema; public will be used only if that is correct.", "Confirm the relation-level PostgreSQL schema before export.")
+        if m.sql_query is not None and not m.sql_query.strip():
+            _add(issues, "error", "Source Mapping", m.datasource, "SQL query mapping is empty.", "Provide SQL text or replace with table mapping.")
+
         if m.target_connector in LOCAL_CONNECTORS:
             if not m.powerbi_path_parameter:
                 _add(issues, "error", "Source Path Mapping", m.datasource, "Local file source has no generated Power Query path parameter.", "Apply Source Mapping again to regenerate the path parameter.", True)
-            if not m.resolved_powerbi_path or not is_absolute_path(m.resolved_powerbi_path):
-                _add(issues, "error", "Source Path Mapping", m.datasource, "Local source path was not resolved to an absolute Power BI-readable path.", "Provide an absolute file path in Source Mapping, then Apply & Regenerate M.")
-            if m.path_mode == "Uploaded workspace absolute path":
-                _add(issues, "warning", "Source Path Portability", m.datasource, "The parameter currently points to the application workspace copy of the uploaded file.", "For a portable production PBIP, map the parameter to the final governed source location before deployment.")
+            path = m.resolved_powerbi_path
+            if not path:
+                _add(issues, "error", "Source Path Mapping", m.datasource, "Local source path is unresolved for Power BI.", "Provide a client-readable file path in Source Mapping before final production refresh.")
+            elif is_absolute_path(path):
+                if m.path_mode and "Cloud workspace" in m.path_mode:
+                    _add(issues, "error", "Source Path Portability", m.datasource, "A cloud/runtime workspace path cannot be used by the downloaded Power BI project.", "Replace it with a client/governed source path before export.")
+            else:
+                _add(issues, "warning", "Source Path Portability", m.datasource, "The generated source parameter is portable/relative and must be confirmed on the machine that opens the PBIP.", "Set the parameter to the final absolute Windows/network path before refresh or production deployment.")
 
     for t in project.semantic_tables:
         if not t.m_query or not re.search(r"(?is)\blet\b.+\bin\b", t.m_query or ""):
