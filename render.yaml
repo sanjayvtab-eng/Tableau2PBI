@@ -1,0 +1,35 @@
+services:
+  # 1. Backend Web Service (FastAPI)
+  - type: web
+    name: tableau2pbi-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: CORS_ORIGIN_REGEX
+        value: ".*"
+      - key: T2PBI_WORKSPACE
+        value: "/tmp/t2pbi_runtime/workspace"
+
+  # 2. Frontend Static Site (React + Vite)
+  - type: web
+    name: tableau2pbi-frontend
+    runtime: static
+    rootDir: frontend
+    plan: free
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: tableau2pbi-backend
+          property: host
