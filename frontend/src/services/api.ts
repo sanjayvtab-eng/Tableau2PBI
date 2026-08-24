@@ -1,10 +1,15 @@
 import { MigrationProject, Relationship, SourceMapping } from '../types/project';
 
 function normalizeApiBaseUrl(value: string | undefined): string {
-  const raw = (value || 'http://127.0.0.1:8000').trim().replace(/\/$/, '');
-  if (!raw) return 'http://127.0.0.1:8000';
-  if (/^https?:\/\//i.test(raw)) return raw;
-  return `https://${raw}`;
+  const raw = (value || '').trim().replace(/\/$/, '');
+  if (raw) {
+    if (/^https?:\/\//i.test(raw)) return raw;
+    return `https://${raw}`;
+  }
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
+  return 'http://127.0.0.1:8000';
 }
 
 export const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL);
@@ -37,18 +42,18 @@ async function assertTableauBackend(): Promise<void> {
     }
     const health = await response.json();
     if (!String(health.application || '').includes('TABLEAU2PBI')) {
-      throw new Error('Port 8000 is not running the TABLEAU2PBI backend. Stop the old backend and restart this application backend.');
+      throw new Error(`The backend at ${API_BASE_URL} is not running the TABLEAU2PBI service.`);
     }
     const backendVersion = String(health.version || '0.0.0');
     const majorVersion = Number.parseInt(backendVersion.split('.')[0] || '0', 10);
     if (!Number.isFinite(majorVersion) || majorVersion < 11) {
       throw new Error(
-        `Port 8000 is running an incompatible TABLEAU2PBI backend version (${backendVersion}). ` +
-        'Stop the older backend and start the backend included with this V11 package.'
+        `Backend at ${API_BASE_URL} is running an incompatible version (${backendVersion}). ` +
+        'Please ensure the latest backend version is running.'
       );
     }
   } catch (error) {
-    throw new Error(`Cannot connect to TABLEAU2PBI backend at ${API_BASE_URL}. Start backend first using start_tableau2pbi.ps1. Details: ${(error as Error).message}`);
+    throw new Error(`Cannot connect to TABLEAU2PBI backend at ${API_BASE_URL}. Details: ${(error as Error).message}`);
   }
 }
 
