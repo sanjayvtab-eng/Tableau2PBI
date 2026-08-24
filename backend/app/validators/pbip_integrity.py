@@ -65,7 +65,6 @@ def _strict_excel_m(expr: str) -> str:
         flags=re.S,
     )
 
-    # Do not turn a failed source/navigation step into an empty table with no columns.
     expr = re.sub(
         r'Safe_Convert_Values_To_Selected_Types\s*=\s*try\s+Promote_Source_Headers\s+otherwise\s+#table\(\{\},\s*\{\}\),',
         'Safe_Convert_Values_To_Selected_Types = Promote_Source_Headers,',
@@ -76,10 +75,11 @@ def _strict_excel_m(expr: str) -> str:
 
 
 def _upgrade_blank_legacy_report(report_dir: Path, checks: list[dict]) -> None:
-    """Upgrade the exporter blank PBIR-Legacy skeleton to documented PBIR structure.
+    """Upgrade a blank PBIR-Legacy report to the enhanced PBIR folder structure.
 
-    Only blank legacy reports are upgraded. Existing reports that already contain visuals
-    are preserved and validated as legacy to avoid destroying migrated content.
+    Keep the generated report intentionally minimal. Power BI validates report.json
+    against the schema declared in $schema and rejects unknown root properties. In
+    particular, layoutOptimization is not valid in the 3.2.0 report schema used here.
     """
     legacy = report_dir / "report.json"
     pbir = report_dir / "definition.pbir"
@@ -115,7 +115,6 @@ def _upgrade_blank_legacy_report(report_dir: Path, checks: list[dict]) -> None:
         {
             "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/report/3.2.0/schema.json",
             "themeCollection": {},
-            "layoutOptimization": "None",
             "settings": {
                 "useStylableVisualContainerHeader": True,
                 "defaultDrillFilterOtherVisuals": True,
@@ -145,7 +144,7 @@ def _upgrade_blank_legacy_report(report_dir: Path, checks: list[dict]) -> None:
         },
     )
     legacy.unlink(missing_ok=True)
-    checks.append({"check": "PBIR report upgrade", "status": "Passed", "message": "Blank legacy report skeleton upgraded to documented PBIR folder format."})
+    checks.append({"check": "PBIR report upgrade", "status": "Passed", "message": "Blank legacy report skeleton upgraded to enhanced PBIR without unsupported root properties."})
 
 
 def _validate_report(report_dir: Path, checks: list[dict], blockers: list[str]) -> None:
@@ -180,8 +179,11 @@ def _validate_report(report_dir: Path, checks: list[dict], blockers: list[str]) 
         pages = _read_json_no_bom(required[2], checks, blockers)
         if version and version.get("version") != "2.0.0":
             blockers.append(f"Unsupported PBIR content version: {version.get('version')!r}; expected '2.0.0'")
-        if report is not None and "themeCollection" not in report:
-            blockers.append("PBIR definition/report.json is missing themeCollection")
+        if report is not None:
+            if "themeCollection" not in report:
+                blockers.append("PBIR definition/report.json is missing themeCollection")
+            if "layoutOptimization" in report:
+                blockers.append("PBIR definition/report.json contains unsupported root property layoutOptimization")
         order = (pages or {}).get("pageOrder") or []
         active = (pages or {}).get("activePageName")
         if not order:
@@ -294,7 +296,6 @@ def validate_pbip_tree(pbip_root: Path) -> tuple[list[dict], list[str]]:
                 if ref not in expressions:
                     blockers.append(f"M query {t.get('name')} references missing path parameter {ref}")
 
-    # Block cloud runtime paths leaking into a client PBIP parameter.
     for name, exp in expressions.items():
         value = str(exp.get("expression") or "")
         if re.search(r'"/(tmp|var/tmp)/', value):
