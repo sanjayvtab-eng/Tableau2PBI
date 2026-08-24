@@ -27,7 +27,7 @@ def _default_cors_origin_regex() -> str:
 
 class Settings(BaseSettings):
     app_name: str = "TABLEAU2PBI Enterprise Migration Workbench"
-    version: str = "11.6.6"
+    version: str = "11.6.7"
     storage_root: Path = _default_storage_root()
     max_upload_mb: int = 500
     safe_openable_mode: bool = True
