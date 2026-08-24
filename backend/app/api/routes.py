@@ -23,20 +23,42 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+
 @router.post("/auth/login")
 def login(payload: LoginRequest):
-    # Demo-only local authentication. Replace with enterprise SSO/identity provider before production.
-    if payload.username.strip().lower() == "balamuraleee@gmail.com" and payload.password == "12345":
-        return {"authenticated": True, "display_name": "Balamuraleee", "role": "Migration Administrator", "demo_auth": True}
+    if not settings.auth_username or not settings.auth_password:
+        raise HTTPException(
+            status_code=503,
+            detail="Authentication is not configured. Set T2PBI_AUTH_USERNAME and T2PBI_AUTH_PASSWORD in the deployment environment.",
+        )
+    if (
+        payload.username.strip().casefold() == settings.auth_username.strip().casefold()
+        and payload.password == settings.auth_password
+    ):
+        return {
+            "authenticated": True,
+            "display_name": payload.username.strip(),
+            "role": "Migration Administrator",
+            "demo_auth": False,
+        }
     raise HTTPException(status_code=401, detail="Invalid username or password.")
+
 
 @router.get("/upload-models")
 def upload_models():
     return {"models": catalogue()}
 
+
 @router.get("/health")
 def health():
-    return {"status": "ok", "application": "TABLEAU2PBI Enterprise Migration Workbench", "version": settings.version, "workspace": str(settings.storage_root)}
+    return {
+        "status": "ok",
+        "application": "TABLEAU2PBI Enterprise Migration Workbench",
+        "version": settings.version,
+        "workspace": str(settings.storage_root),
+        "auth_configured": bool(settings.auth_username and settings.auth_password),
+    }
+
 
 @router.post("/projects/upload", response_model=MigrationProject)
 def upload_project(files: list[UploadFile] = File(...)):
@@ -53,6 +75,7 @@ def upload_project(files: list[UploadFile] = File(...)):
     persist_project(project)
     return project
 
+
 @router.post("/projects/demo", response_model=MigrationProject)
 def load_demo_project():
     base = Path(__file__).resolve().parents[3] / "sample_project"
@@ -68,12 +91,14 @@ def load_demo_project():
     persist_project(project)
     return project
 
+
 @router.get("/projects/{project_id}", response_model=MigrationProject)
 def get_project(project_id: str):
     try:
         return load_project(project_id)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
+
 
 @router.put("/projects/{project_id}/source-mappings", response_model=MigrationProject)
 def update_source_mappings(project_id: str, mappings: list[SourceMapping]):
@@ -96,6 +121,7 @@ def update_source_mappings(project_id: str, mappings: list[SourceMapping]):
     persist_project(project)
     return project
 
+
 @router.put("/projects/{project_id}/relationships", response_model=MigrationProject)
 def update_relationships(project_id: str, relationships: list[RelationshipCandidate]):
     project = load_project(project_id)
@@ -111,6 +137,7 @@ def update_relationships(project_id: str, relationships: list[RelationshipCandid
     persist_project(project)
     return project
 
+
 @router.post("/projects/{project_id}/validate", response_model=MigrationProject)
 def validate(project_id: str):
     project = load_project(project_id)
@@ -124,6 +151,7 @@ def validate(project_id: str):
     project.health_status = health_from_issues(project.validation_issues)
     persist_project(project)
     return project
+
 
 @router.post("/projects/{project_id}/export")
 def export_project(project_id: str, request: Request):
@@ -144,7 +172,13 @@ def export_project(project_id: str, request: Request):
     persist_project(project)
     relative = f"/api/projects/{project_id}/export/download"
     absolute = str(request.base_url).rstrip("/") + relative
-    return {"download_url": relative, "absolute_download_url": absolute, "export_path": str(zip_path), "health_status": project.health_status}
+    return {
+        "download_url": relative,
+        "absolute_download_url": absolute,
+        "export_path": str(zip_path),
+        "health_status": project.health_status,
+    }
+
 
 @router.get("/projects/{project_id}/export/download")
 def download_export(project_id: str):
