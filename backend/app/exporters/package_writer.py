@@ -862,6 +862,19 @@ def write_export(project: MigrationProject) -> Path:
         session.write_csv("source_mapping/tde_source_mapping.csv", _flatten_tde_rows(project))
         session.write_csv("validation/tde_source_column_validation.csv", _tde_column_validation_rows(project))
         session.write_json("validation/tde_source_column_validation.json", _tde_column_validation_rows(project))
+
+        # Bundle available source data files into the exported package for seamless offline/local refresh
+        for item in project.inventory:
+            if item.extension.lower() in {".xlsx", ".xls", ".csv", ".txt", ".tsv", ".json", ".xml", ".parquet", ".sql"}:
+                src_file = Path(item.absolute_path)
+                if src_file.exists() and src_file.is_file():
+                    folder_rel = item.folder_path.strip("/\\") if item.folder_path and item.folder_path not in {".", ""} else "Data"
+                    rel_dest = Path(folder_rel) / item.file_name
+                    dest_path = staging_root / rel_dest
+                    dest_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src_file, dest_path)
+                    session.record(dest_path, "Success", f"Bundled source data file {item.file_name}", dest_path.stat().st_size)
+
         
         # Build valid table columns for reference validation in the report
         valid_table_cols_ci = {}

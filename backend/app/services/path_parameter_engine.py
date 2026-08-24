@@ -35,12 +35,16 @@ def normalize_file_path(value: str | None) -> str | None:
 
 
 def parameter_name(mapping: SourceMapping) -> str:
-    base = clean_name(mapping.table_name or mapping.datasource or "Source").replace(" ", "_")
+    target_file = mapping.target_file_path or mapping.detected_source_path
+    if target_file:
+        file_stem = Path(target_file).stem
+        base = clean_name(file_stem).replace(" ", "_")
+    else:
+        base = clean_name(mapping.datasource or "Source").replace(" ", "_")
     base = re.sub(r"[^A-Za-z0-9_]", "_", base).strip("_") or "Source"
     if base[0].isdigit():
         base = "T_" + base
-    digest = hashlib.sha1(str(mapping.source_id).encode("utf-8", errors="ignore")).hexdigest()[:6]
-    return f"{base}_{digest}_SourcePath"
+    return f"{base}_SourcePath"
 
 
 def configure_mapping_path(mapping: SourceMapping, workspace: Path | None = None) -> SourceMapping:
