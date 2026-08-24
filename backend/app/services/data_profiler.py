@@ -55,12 +55,26 @@ def _candidate_paths(mapping: SourceMapping, workspace_path: Path) -> list[Path]
     return unique
 
 
-def _read_sample(path: Path, connector: str) -> pd.DataFrame:
+def _read_sample(path: Path, connector: str, table_name: str | None = None) -> pd.DataFrame:
     ext = path.suffix.lower()
     if connector in {"CSV", "Text"} or ext in {".csv", ".txt", ".tsv"}:
         sep = "\t" if ext == ".tsv" else None
         return pd.read_csv(path, sep=sep, engine="python", nrows=500)
     if connector == "Excel" or ext in {".xlsx", ".xls"}:
+        if table_name:
+            clean_t = str(table_name).strip("[]'\"$ \t\r\n").replace("$", "").strip()
+            try:
+                with pd.ExcelFile(path) as excel_file:
+                    matched_sheet = None
+                    for s in excel_file.sheet_names:
+                        s_clean = str(s).strip("[]'\"$ \t\r\n").replace("$", "").strip()
+                        if s.lower() == clean_t.lower() or s_clean.lower() == clean_t.lower() or s.lower() == str(table_name).lower():
+                            matched_sheet = s
+                            break
+                    if matched_sheet:
+                        return pd.read_excel(excel_file, sheet_name=matched_sheet, nrows=500)
+            except Exception:
+                pass
         return pd.read_excel(path, nrows=500)
     if connector == "JSON" or ext == ".json":
         df = pd.read_json(path)
@@ -171,7 +185,7 @@ def preview_mapping(mapping: SourceMapping, workspace_path: Path) -> DataPreview
         tried.append(str(path))
         if path.exists() and path.is_file():
             try:
-                df = _read_sample(path, mapping.target_connector)
+                df = _read_sample(path, mapping.target_connector, table_name=mapping.table_name)
                 rows = json.loads(df.head(10).to_json(orient="records", date_format="iso"))
                 cols = [_profile_column(df[c]) for c in df.columns]
                 return DataPreview(source_id=mapping.source_id, available=True, rows=rows, columns=cols, warnings=[])
