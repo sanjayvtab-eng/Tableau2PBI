@@ -36,7 +36,8 @@ if (!(Test-Path ".venv\Scripts\python.exe")) {
 }
 
 . .\.venv\Scripts\Activate.ps1
-$requirementsHash = (Get-FileHash -Algorithm SHA256 "requirements.txt").Hash
+$requirementsContent = Get-Content "requirements.txt" -Raw -ErrorAction SilentlyContinue
+$requirementsHash = if ($requirementsContent) { $requirementsContent.Length.ToString() } else { "unknown" }
 $marker = ".venv\requirements.sha256"
 $installedHash = if (Test-Path $marker) { (Get-Content $marker -Raw).Trim() } else { "" }
 if ($installedHash -ne $requirementsHash) {
