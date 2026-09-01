@@ -1,4 +1,6 @@
 from __future__ import annotations
+import os
+import jwt
 from pathlib import Path
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel
@@ -42,6 +44,39 @@ def login(payload: LoginRequest):
             "demo_auth": False,
         }
     raise HTTPException(status_code=401, detail="Invalid username or password.")
+
+
+class VTABSSORequest(BaseModel):
+    token: str
+
+@router.post("/auth/vtab-sso")
+def vtab_sso(payload: VTABSSORequest):
+    sso_secret = os.environ.get("VTAB_SSO_SECRET")
+    if not sso_secret:
+        raise HTTPException(status_code=500, detail="Server missing VTAB_SSO_SECRET")
+    
+    try:
+        decoded = jwt.decode(
+            payload.token,
+            sso_secret,
+            algorithms=["HS256"],
+            audience="tableau2pbi",
+            issuer="vtab360"
+        )
+        
+        if decoded.get("purpose") != "vtab_sso":
+            raise HTTPException(status_code=400, detail="Invalid token purpose")
+            
+        return {
+            "authenticated": True,
+            "display_name": decoded.get("email"),
+            "role": "VTAB SSO User",
+            "demo_auth": False,
+        }
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="SSO token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid SSO token")
 
 
 @router.get("/upload-models")

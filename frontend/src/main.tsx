@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import Layout from './components/Layout';
 import Login from './pages/Login';
@@ -25,6 +25,37 @@ function App() {
   const [authenticated, setAuthenticated] = useState(() => sessionStorage.getItem('t2pbi_authenticated') === 'true');
   const [active, setActive] = useState('Landing');
   const [project, setProject] = useState<MigrationProject>();
+  const [ssoLoading, setSsoLoading] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token) {
+      setSsoLoading(true);
+      fetch('/api/auth/vtab-sso', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.authenticated) {
+          sessionStorage.setItem('t2pbi_authenticated', 'true');
+          setAuthenticated(true);
+          // Remove token from URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+          alert('SSO Failed: ' + data.detail);
+        }
+      })
+      .catch(err => {
+        console.error('SSO error:', err);
+        alert('SSO Error: ' + err.message);
+      })
+      .finally(() => setSsoLoading(false));
+    }
+  }, []);
+
   const requireProject = (page: React.ReactNode) => project ? page : <Upload project={project} setProject={setProject} onLoaded={() => setActive('360 Summary')}/>;
   const content = (() => {
     switch(active) {
@@ -47,6 +78,7 @@ function App() {
       default: return <Landing onStart={() => setActive('Upload')}/>;
     }
   })();
+  if (ssoLoading) return <div style={{display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: 'white', fontFamily: 'system-ui'}}>Logging you in securely...</div>;
   if (!authenticated) return <Login onAuthenticated={() => setAuthenticated(true)}/>;
   return <Layout active={active} onNav={setActive} hasProject={!!project} onLogout={() => { sessionStorage.removeItem('t2pbi_authenticated'); setAuthenticated(false); }}>{content}</Layout>;
 }
