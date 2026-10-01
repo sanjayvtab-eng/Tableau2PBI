@@ -67,6 +67,25 @@ in
 '''
     hardened = _strict_excel_m(source)
     assert "try Excel.Workbook" not in hardened
-    assert "Candidate_Objects{0}[Data]" not in hardened
+    assert "Candidate_Objects{0}[Data]" in hardened
     assert "otherwise #table({}, {})" not in hardened
     assert "ExcelNavigation" in hardened
+
+
+def test_excel_m_single_sheet_expression_structure():
+    source = '''let
+    Workbook_Navigation = try Excel.Workbook(File.Contents(sales_targets_SourcePath), null, false) otherwise #table({"Name", "Data", "Item", "Kind", "Hidden"}, {}),
+    Candidate_Objects = Table.SelectRows(Workbook_Navigation, each ([Kind] = "Table" or [Kind] = "Sheet")),
+    Matching_Objects = Table.SelectRows(Candidate_Objects, each Text.Lower(Text.From([Item])) = Text.Lower("sales_targets") or Text.Lower(Text.From([Name])) = Text.Lower("sales_targets")),
+    Source_Read = if Table.RowCount(Matching_Objects) > 0 then Matching_Objects{0}[Data] else if Table.RowCount(Candidate_Objects) > 0 then Candidate_Objects{0}[Data] else #table({}, {}),
+    Promote_Source_Headers = try Table.PromoteHeaders(Source_Read, [PromoteAllScalars=true]) otherwise Source_Read,
+    Safe_Convert_Values_To_Selected_Types = try Promote_Source_Headers otherwise #table({}, {})
+in
+    Safe_Convert_Values_To_Selected_Types
+'''
+    hardened = _strict_excel_m(source)
+    # Verify that single-sheet fallback is preserved:
+    assert "else if Table.RowCount(Matching_Objects) = 0 and Table.RowCount(Candidate_Objects) = 1 then Candidate_Objects{0}[Data]" in hardened
+    # Verify that multi-sheet missing error is still guarded:
+    assert 'else if Table.RowCount(Matching_Objects) = 0 then error Error.Record("ExcelNavigation", "Requested Excel sheet/table was not found"' in hardened
+

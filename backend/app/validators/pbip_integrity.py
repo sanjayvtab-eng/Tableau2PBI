@@ -60,6 +60,7 @@ def _strict_excel_m(expr: str) -> str:
     expr = re.sub(
         r'Source_Read\s*=\s*if\s+Table\.RowCount\(Matching_Objects\)\s*>\s*0\s*then\s+Matching_Objects\{0\}\[Data\]\s*else\s+if\s+Table\.RowCount\(Candidate_Objects\)\s*>\s*0\s*then\s+Candidate_Objects\{0\}\[Data\]\s*else\s+#table\(\{\},\s*\{\}\),',
         'Source_Read = if Table.RowCount(Matching_Objects) = 1 then Matching_Objects{0}[Data] '
+        'else if Table.RowCount(Matching_Objects) = 0 and Table.RowCount(Candidate_Objects) = 1 then Candidate_Objects{0}[Data] '
         'else if Table.RowCount(Matching_Objects) = 0 then error Error.Record("ExcelNavigation", "Requested Excel sheet/table was not found", [RequestedObject = "configured sheet/table"]) '
         'else error Error.Record("ExcelNavigation", "Multiple Excel objects matched the requested sheet/table", [MatchCount = Table.RowCount(Matching_Objects)]),',
         expr,
@@ -67,8 +68,8 @@ def _strict_excel_m(expr: str) -> str:
     )
 
     expr = re.sub(
-        r'Safe_Convert_Values_To_Selected_Types\s*=\s*try\s+Promote_Source_Headers\s+otherwise\s+#table\(\{\},\s*\{\}\),',
-        'Safe_Convert_Values_To_Selected_Types = Promote_Source_Headers,',
+        r'Safe_Convert_Values_To_Selected_Types\s*=\s*try\s+Promote_Source_Headers\s+otherwise\s+#table\(\{\},\s*\{\}\)(,?)',
+        r'Safe_Convert_Values_To_Selected_Types = Promote_Source_Headers\1',
         expr,
         flags=re.S,
     )

@@ -53,17 +53,19 @@ def parameter_name(mapping: SourceMapping) -> str:
 
 def _is_cloud_workspace_path(value: str | None, workspace: Path | None) -> bool:
     """Detect backend-only paths that must never be serialized as client Power BI paths."""
-    if not value or not _looks_posix_absolute(value):
+    if not value:
         return False
-    normalized = str(Path(value))
-    if normalized.startswith("/tmp/") or normalized.startswith("/var/tmp/"):
-        return True
     if workspace is not None:
         try:
             Path(value).resolve().relative_to(workspace.resolve())
             return True
         except Exception:
             pass
+    if not _looks_posix_absolute(value):
+        return False
+    normalized = str(Path(value))
+    if normalized.startswith("/tmp/") or normalized.startswith("/var/tmp/"):
+        return True
     return False
 
 
