@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { Card, Metric, Badge } from '../components/Cards';
 import DataTable from '../components/DataTable';
 import { MigrationProject } from '../types/project';
+import { deleteProject } from '../services/api';
+import { Trash2 } from 'lucide-react';
 
 const DETAIL_OPTIONS = [
   'TDE strategy',
@@ -28,10 +30,25 @@ function cleanJson(value: unknown) {
   return value;
 }
 
-export default function Summary({ project }: {project: MigrationProject}) {
+export default function Summary({ project, onDeleted }: {project: MigrationProject; onDeleted?: () => void}) {
   const [detail, setDetail] = useState(DETAIL_OPTIONS[0]);
+  const [deleting, setDeleting] = useState(false);
   const tone = project.health_status === 'Ready' ? 'good' : project.health_status === 'Blocked' ? 'bad' : 'warn';
   const summary = project.summary || {};
+
+  async function handleDelete() {
+    if (window.confirm(`Permanently delete project "${project.project_name}" and all its workspace data from the server?`)) {
+      setDeleting(true);
+      try {
+        await deleteProject(project.project_id);
+        onDeleted?.();
+      } catch (err) {
+        alert("Failed to delete project: " + (err as Error).message);
+      } finally {
+        setDeleting(false);
+      }
+    }
+  }
 
   const tdeScenario = String(pick(summary, 'tde_strategy_scenario', 'TDE strategy scenario') || (project.tde_analysis?.[0] as any)?.scenario_classification || 'No TDE detected');
   const tdeRule = String(pick(summary, 'tde_source_of_truth_rule', 'TDE source-of-truth rule') || (project.tde_analysis?.length ? 'TDE is validation/fallback only' : 'No legacy TDE dependency'));
@@ -137,7 +154,35 @@ export default function Summary({ project }: {project: MigrationProject}) {
   }
 
   return <div className="page summaryPage">
-    <Card title="Tableau 360 Summary" right={<Badge tone={tone}>{project.health_status}</Badge>}>
+    <Card 
+      title="Tableau 360 Summary" 
+      right={
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button 
+            type="button"
+            className="deleteProjectBtn"
+            style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '4px', 
+              padding: '4px 10px', 
+              fontSize: '12px', 
+              fontWeight: 500, 
+              color: '#ef4444', 
+              background: 'rgba(239, 68, 68, 0.08)', 
+              border: '1px solid rgba(239, 68, 68, 0.3)', 
+              borderRadius: '6px', 
+              cursor: deleting ? 'not-allowed' : 'pointer' 
+            }}
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            <Trash2 size={13} /> {deleting ? 'Deleting...' : 'Delete Project'}
+          </button>
+          <Badge tone={tone}>{project.health_status}</Badge>
+        </div>
+      }
+    >
       <div className="summaryHeroCompact">
         <div>
           <p className="eyebrow">Executive migration snapshot</p>

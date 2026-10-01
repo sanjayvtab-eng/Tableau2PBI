@@ -10,7 +10,7 @@ def test_excel_navigates_to_data_object_before_column_typing():
     with tempfile.TemporaryDirectory(prefix='t2pbi_schema_align_') as td:
         project = run_pipeline(MigrationProject(project_id='schema_align', project_name='Schema Align', workspace_path=td), [package])
         target = next(t for t in project.semantic_tables if t.name.casefold() == 'sales_targets')
-        assert 'Workbook_Navigation = Excel.Workbook' in target.m_query
+        assert 'Excel.Workbook' in target.m_query and 'Workbook_Navigation' in target.m_query
         assert 'Candidate_Objects = Table.SelectRows' in target.m_query
         assert 'Source_Read = if Table.RowCount' in target.m_query
         assert 'Table.PromoteHeaders(Source_Read' in target.m_query

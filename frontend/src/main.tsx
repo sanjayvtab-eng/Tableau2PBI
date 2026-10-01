@@ -62,7 +62,7 @@ function App() {
       case 'Landing': return <Landing onStart={() => setActive('Upload')}/>;
       case 'Upload': return <Upload project={project} setProject={setProject} onLoaded={() => setActive('Upload Models')}/>;
       case 'Upload Models': return <UploadModels project={project}/>;
-      case '360 Summary': return requireProject(<Summary project={project!}/>);
+      case '360 Summary': return requireProject(<Summary project={project!} onDeleted={() => { setProject(undefined); setActive('Upload'); }}/>);
       case 'File Processing Tree': return requireProject(<FileProcessingTree project={project!}/>);
       case 'TDE Source Recovery': return requireProject(<TDEStrategy project={project!} setProject={setProject}/>);
       case 'Source Overview': return requireProject(<SourceOverview project={project!}/>);

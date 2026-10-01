@@ -119,3 +119,10 @@ export async function login(username: string, password: string): Promise<{authen
   const response = await fetch(`${API_BASE_URL}/api/auth/login`, {method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username, password})});
   return asJson(response);
 }
+
+export async function deleteProject(projectId: string): Promise<{deleted: boolean; project_id: string; message: string}> {
+  await assertTableauBackend();
+  const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`, { method: 'DELETE' });
+  return asJson(response);
+}
+

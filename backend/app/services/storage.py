@@ -24,11 +24,24 @@ def new_project_dir(project_name: str | None = None) -> tuple[str, Path]:
     return project_id, path
 
 
+MAX_UPLOAD_BYTES = 500 * 1024 * 1024  # 500 MB limit per file
+
+
 def save_upload(project_path: Path, upload: UploadFile) -> Path:
     destination = (project_path / "uploads" / _safe_filename(upload.filename)).resolve()
     destination.parent.mkdir(parents=True, exist_ok=True)
+    total_written = 0
+    chunk_size = 1024 * 1024  # 1 MB chunk
     with destination.open("wb") as f:
-        shutil.copyfileobj(upload.file, f, length=1024 * 1024)
+        while True:
+            chunk = upload.file.read(chunk_size)
+            if not chunk:
+                break
+            total_written += len(chunk)
+            if total_written > MAX_UPLOAD_BYTES:
+                destination.unlink(missing_ok=True)
+                raise ValueError(f"Uploaded file exceeds maximum allowed limit of 500 MB.")
+            f.write(chunk)
     return destination
 
 
@@ -42,3 +55,17 @@ def load_project(project_id: str) -> MigrationProject:
     if payload is None:
         raise FileNotFoundError(f"Project {project_id} not found")
     return MigrationProject.model_validate(payload)
+
+
+def delete_project(project_id: str) -> bool:
+    safe_id = re.sub(r"[^A-Za-z0-9_\-]+", "", project_id)
+    if not safe_id:
+        return False
+    path = (settings.storage_root / safe_id).resolve()
+    if not str(path).startswith(str(settings.storage_root.resolve())):
+        raise ValueError("Invalid project directory traversal")
+    if path.exists() and path.is_dir():
+        shutil.rmtree(path)
+        return True
+    return False
+
