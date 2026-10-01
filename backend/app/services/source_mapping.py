@@ -207,6 +207,19 @@ def build_source_mappings(project: MigrationProject) -> list[SourceMapping]:
                             table_name_val = raw_t.strip("[] \t\r\n")
                     elif r.name:
                         table_name_val = r.name.strip("[] \t\r\n")
+
+                if "#" in str(table_name_val):
+                    table_name_val = str(table_name_val).split("#")[0]
+
+                # Smart fallback: if table_name_val is generic (e.g. 'csv', 'txt', 'table', 'sheet')
+                # resolve to actual file stem if available
+                if (not table_name_val) or str(table_name_val).strip().lower() in {"csv", "txt", "tsv", "text", "xlsx", "xls", "table", "relation", "sheet", "none"}:
+                    candidate_path = resolved_path or getattr(c, "local_file_path", None)
+                    if candidate_path:
+                        candidate_stem = Path(str(candidate_path)).stem
+                        if candidate_stem and candidate_stem.strip().lower() not in {"csv", "txt", "tsv", "text", "xlsx", "xls", "table", "relation", "sheet", "none"}:
+                            table_name_val = candidate_stem
+
                 
                 if connector == "PostgreSQL" and (r.relation_type or "").lower() in {"table", ""}:
                     schema_name_val, resolved_table = _resolve_postgres_relation_schema_and_table(
